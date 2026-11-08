@@ -139,7 +139,7 @@ export const LoadMenu: React.FC<LoadMenuProps> = ({
                   Current Master Track: {activeTrackName}
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-neutral-400">
-                  Ready for waveform slicing and MPC pad assignment
+                  Ready for waveform slicing, DSP processing, and beat production
                 </span>
               </div>
             </div>

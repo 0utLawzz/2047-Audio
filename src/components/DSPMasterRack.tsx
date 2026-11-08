@@ -12,10 +12,22 @@ import {
   Activity,
   BarChart2,
   Shield,
-  Gauge
+  Gauge,
+  Bookmark,
+  Plus,
+  Trash2,
+  Check,
+  Disc
 } from 'lucide-react';
 import { MasterEffects, AudioTrack } from '../types/audio';
 import { separateAudioStems } from '../utils/audioEffects';
+import { 
+  DSPPreset, 
+  BUILTIN_DSP_PRESETS, 
+  loadCustomDSPPresets, 
+  saveCustomDSPPreset, 
+  deleteCustomDSPPreset 
+} from '../types/presets';
 
 interface DSPMasterRackProps {
   effects: MasterEffects;
@@ -39,10 +51,54 @@ export const DSPMasterRack: React.FC<DSPMasterRackProps> = ({
   const [activeRackTab, setActiveRackTab] = useState<'all' | 'dsp' | 'eq_dynamics' | 'stems'>('all');
   const [isSeparatingStems, setIsSeparatingStems] = useState(false);
   const [stemSuccess, setStemSuccess] = useState(false);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [customPresets, setCustomPresets] = useState<DSPPreset[]>(() => loadCustomDSPPresets());
+  const [isSavingCustom, setIsSavingCustom] = useState(false);
+  const [customPresetName, setCustomPresetName] = useState('');
+  const [presetSuccessMessage, setPresetSuccessMessage] = useState<string | null>(null);
   const vuCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const update = (partial: Partial<MasterEffects>) => {
+    setActivePresetId(null);
     onChangeEffects({ ...effects, ...partial });
+  };
+
+  const handleApplyPreset = (preset: DSPPreset) => {
+    setActivePresetId(preset.id);
+    onBufferSync?.();
+    onChangeEffects({
+      ...effects,
+      ...preset.effects,
+    });
+    setPresetSuccessMessage(`Loaded "${preset.name}"`);
+    setTimeout(() => setPresetSuccessMessage(null), 2500);
+  };
+
+  const handleSaveCustomPreset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customPresetName.trim()) return;
+    const newPreset: DSPPreset = {
+      id: `custom_${Date.now()}`,
+      name: customPresetName.trim(),
+      tagline: 'Custom User FX Configuration',
+      category: 'custom',
+      badgeColor: '#EC4899',
+      effects: { ...effects },
+    };
+    const updated = saveCustomDSPPreset(newPreset);
+    setCustomPresets(updated);
+    setActivePresetId(newPreset.id);
+    setCustomPresetName('');
+    setIsSavingCustom(false);
+    setPresetSuccessMessage(`Saved "${newPreset.name}" to presets`);
+    setTimeout(() => setPresetSuccessMessage(null), 2500);
+  };
+
+  const handleDeleteCustomPreset = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = deleteCustomDSPPreset(id);
+    setCustomPresets(updated);
+    if (activePresetId === id) setActivePresetId(null);
   };
 
   // Real-time Spectrum Analyzer & VU
@@ -167,6 +223,149 @@ export const DSPMasterRack: React.FC<DSPMasterRackProps> = ({
           onChange={(e) => update({ masterVolume: Number(e.target.value) })}
           className="w-full accent-amber-500 dark:accent-yellow-400 h-1.5 bg-slate-200 dark:bg-neutral-800 rounded-lg cursor-pointer"
         />
+      </div>
+
+      {/* DSP Presets System (Vocal Clarity, Bass Booster, Lo-Fi Texture, Custom) */}
+      <div className="p-3.5 rounded-xl bg-white dark:bg-[#12121a] border border-slate-200 dark:border-neutral-800 shadow-xs space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Bookmark className="w-3.5 h-3.5 text-amber-500 dark:text-yellow-400" />
+            <span className="text-xs font-bold text-slate-800 dark:text-neutral-200 font-mono">
+              DSP & Master FX Presets
+            </span>
+          </div>
+
+          <button
+            onClick={() => setIsSavingCustom(!isSavingCustom)}
+            className="text-[10px] font-mono px-2 py-1 rounded bg-slate-100 dark:bg-neutral-900 hover:bg-slate-200 dark:hover:bg-neutral-800 text-slate-700 dark:text-neutral-300 border border-slate-200 dark:border-neutral-700/80 flex items-center gap-1 cursor-pointer transition-colors active:scale-95"
+            title="Save current rack settings as a reusable preset"
+          >
+            <Plus className="w-3 h-3 text-amber-500" />
+            <span>Save Custom</span>
+          </button>
+        </div>
+
+        {/* Feedback message banner */}
+        {presetSuccessMessage && (
+          <div className="px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800/50 text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 animate-in fade-in duration-150">
+            <Check className="w-3.5 h-3.5 shrink-0" />
+            <span>{presetSuccessMessage}</span>
+          </div>
+        )}
+
+        {/* Inline Save Preset Form */}
+        {isSavingCustom && (
+          <form onSubmit={handleSaveCustomPreset} className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#09090e] border border-slate-200 dark:border-neutral-800/80 space-y-2">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wider block">
+              Save Current FX Chain as Preset:
+            </span>
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                value={customPresetName}
+                onChange={(e) => setCustomPresetName(e.target.value)}
+                placeholder="e.g. My Heavy 808 Crunch"
+                autoFocus
+                className="flex-1 bg-white dark:bg-[#14141e] border border-slate-300 dark:border-neutral-700 rounded px-2.5 py-1 text-xs text-slate-900 dark:text-neutral-200 focus:outline-none focus:border-amber-400"
+              />
+              <button
+                type="submit"
+                className="px-2.5 py-1 bg-amber-400 dark:bg-yellow-400 text-black text-xs font-bold rounded cursor-pointer hover:bg-amber-300 transition-colors shrink-0"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSavingCustom(false)}
+                className="px-2 py-1 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-neutral-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Built-in Presets */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+          {BUILTIN_DSP_PRESETS.map((preset) => {
+            const isActive = activePresetId === preset.id;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => handleApplyPreset(preset)}
+                title={preset.tagline}
+                className={`px-2.5 py-1.5 rounded-lg border text-left cursor-pointer transition-all flex flex-col justify-between min-h-[46px] group active:scale-[0.98] ${
+                  isActive
+                    ? 'bg-amber-400/15 dark:bg-yellow-400/15 border-amber-500 dark:border-yellow-400 text-slate-900 dark:text-neutral-100 font-bold shadow-xs'
+                    : 'bg-slate-50 dark:bg-[#0e0e16] border-slate-200 dark:border-neutral-800/80 text-slate-700 dark:text-neutral-300 hover:border-slate-300 dark:hover:border-neutral-700'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-[11px] font-bold truncate leading-tight group-hover:text-amber-600 dark:group-hover:text-yellow-400 transition-colors">
+                    {preset.name}
+                  </span>
+                  <span 
+                    className="w-1.5 h-1.5 rounded-full shrink-0 ml-1"
+                    style={{ backgroundColor: preset.badgeColor || '#FACC15' }}
+                  />
+                </div>
+                <span className="text-[9px] text-slate-400 dark:text-neutral-500 truncate block font-mono mt-0.5">
+                  {preset.category.toUpperCase()}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* User Custom Presets if any */}
+        {customPresets.length > 0 && (
+          <div className="pt-1.5 border-t border-slate-100 dark:border-neutral-800/80">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-neutral-500 block mb-1">
+              Custom Presets ({customPresets.length}):
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {customPresets.map((cp) => {
+                const isActive = activePresetId === cp.id;
+                return (
+                  <div
+                    key={cp.id}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all ${
+                      isActive
+                        ? 'bg-cyan-500/15 border-cyan-500 text-cyan-800 dark:text-cyan-300 font-bold'
+                        : 'bg-slate-50 dark:bg-[#0e0e16] border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300'
+                    }`}
+                  >
+                    <button
+                      onClick={() => handleApplyPreset(cp)}
+                      className="cursor-pointer truncate max-w-[120px]"
+                      title="Load this custom preset"
+                    >
+                      {cp.name}
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteCustomPreset(cp.id, e)}
+                      title="Delete preset"
+                      className="p-0.5 text-slate-400 hover:text-red-500 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Selected Preset Tagline Readout */}
+        {activePresetId && (
+          <div className="p-2 rounded bg-slate-50 dark:bg-[#08080c] border border-slate-200/80 dark:border-neutral-800/60 text-[10px] text-slate-500 dark:text-neutral-400 font-mono">
+            Active: <span className="text-amber-600 dark:text-yellow-400 font-bold">{
+              BUILTIN_DSP_PRESETS.find(p => p.id === activePresetId)?.tagline || 
+              customPresets.find(p => p.id === activePresetId)?.tagline || 
+              'Custom adjustments applied'
+            }</span>
+          </div>
+        )}
       </div>
 
       {/* Rack Filter Tabs */}

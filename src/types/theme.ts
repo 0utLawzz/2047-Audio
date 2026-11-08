@@ -12,9 +12,18 @@ export interface ThemeConfig {
 
 export const THEME_PRESETS: ThemeConfig[] = [
   {
+    id: 'midnight-obsidian',
+    name: 'Midnight Obsidian',
+    tagline: 'Stealth Carbon & Ice Turquoise Glow (Default)',
+    isDark: true,
+    previewBg: '#0b0d13',
+    previewAccent: '#38bdf8',
+    previewBorder: 'rgba(56, 189, 248, 0.4)',
+  },
+  {
     id: 'studio-light',
     name: 'Studio Daylight',
-    tagline: 'Precision Slate & Warm Amber (Default)',
+    tagline: 'Precision Slate & Warm Amber',
     isDark: false,
     previewBg: '#f8fafc',
     previewAccent: '#d97706',
@@ -37,14 +46,5 @@ export const THEME_PRESETS: ThemeConfig[] = [
     previewBg: '#f4f1ea',
     previewAccent: '#ea580c',
     previewBorder: '#d6cfc2',
-  },
-  {
-    id: 'midnight-obsidian',
-    name: 'Midnight Obsidian',
-    tagline: 'Stealth Carbon & Ice Turquoise Glow',
-    isDark: true,
-    previewBg: '#0b0d13',
-    previewAccent: '#38bdf8',
-    previewBorder: 'rgba(56, 189, 248, 0.4)',
   },
 ];

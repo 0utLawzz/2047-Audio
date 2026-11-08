@@ -75,12 +75,24 @@ const DEFAULT_EFFECTS: MasterEffects = {
 };
 
 export default function App() {
-  // Theme state: DEFAULT VIEW IS LIGHT VIEW ('studio-light')
-  const [currentTheme, setCurrentTheme] = useState<ThemeVibe>('studio-light');
+  // Theme state: DEFAULT VIEW IS MIDNIGHT VIEW ('midnight-obsidian')
+  const [currentTheme, setCurrentTheme] = useState<ThemeVibe>('midnight-obsidian');
   const [isMobilePreview, setIsMobilePreview] = useState<boolean>(false);
 
   // Layout & Studio Navigation: '3col' | 'slicing' | 'beatpads' | 'load'
-  const [activeLayout, setActiveLayout] = useState<'3col' | 'slicing' | 'beatpads' | 'load'>('3col');
+  // When opening app, default load to 1. Load Audio
+  const [activeLayout, setActiveLayout] = useState<'3col' | 'slicing' | 'beatpads' | 'load'>('load');
+
+  // Visual Indicator for Undo / Redo / History Action
+  const [lastActionNotice, setLastActionNotice] = useState<{
+    text: string;
+    type: 'undo' | 'redo' | 'action';
+    timestamp: number;
+  } | null>({
+    text: '2047 Studio Initialized',
+    type: 'action',
+    timestamp: Date.now(),
+  });
 
   // User Profile & Auth
   const [currentUser, setCurrentUser] = useState<UserProfile>(loadUserProfile());
@@ -146,6 +158,11 @@ export default function App() {
   const pushHistory = useCallback((description: string, currentTracks: AudioTrack[]) => {
     setUndoStack((prev) => [...prev.slice(-20), { description, tracks: JSON.parse(JSON.stringify(currentTracks.map(t => ({ ...t, audioBuffer: t.audioBuffer })))) }]);
     setRedoStack([]);
+    setLastActionNotice({
+      text: description,
+      type: 'action',
+      timestamp: Date.now(),
+    });
   }, []);
 
   // Trigger live change sync buffer overlay
@@ -744,6 +761,11 @@ export default function App() {
     setRedoStack((prev) => [...prev, { description: lastAction.description, tracks }]);
     setUndoStack((prev) => prev.slice(0, -1));
     setTracks(lastAction.tracks);
+    setLastActionNotice({
+      text: `Undid: ${lastAction.description}`,
+      type: 'undo',
+      timestamp: Date.now(),
+    });
   };
 
   const handleRedo = () => {
@@ -752,6 +774,11 @@ export default function App() {
     setUndoStack((prev) => [...prev, { description: nextAction.description, tracks }]);
     setRedoStack((prev) => prev.slice(0, -1));
     setTracks(nextAction.tracks);
+    setLastActionNotice({
+      text: `Redid: ${nextAction.description}`,
+      type: 'redo',
+      timestamp: Date.now(),
+    });
   };
 
   const activeTrack = tracks.find((t) => t.id === activeTrackId) || tracks[0] || null;
@@ -770,6 +797,7 @@ export default function App() {
           activeLayout={activeLayout}
           onChangeLayout={setActiveLayout}
           currentUser={currentUser}
+          lastActionNotice={lastActionNotice}
         />
 
         {/* Master Transport Toolbar with Visual & Click-Track Metronome */}
@@ -930,22 +958,6 @@ export default function App() {
                 <BeatPads
                   activeTrack={activeTrack}
                   onTriggerPad={handleTriggerPad}
-                  onAssignSliceToPad={(sliceId, padIdx) => {
-                    if (activeTrack) {
-                      const updated = activeTrack.slices.map((s) =>
-                        s.id === sliceId ? { ...s, padIndex: padIdx } : s
-                      );
-                      handleUpdateTrack(activeTrack.id, { slices: updated });
-                    }
-                  }}
-                  onClearPad={(padIdx) => {
-                    if (activeTrack) {
-                      const updated = activeTrack.slices.map((s) =>
-                        s.padIndex === padIdx ? { ...s, padIndex: undefined } : s
-                      );
-                      handleUpdateTrack(activeTrack.id, { slices: updated });
-                    }
-                  }}
                 />
               </main>
             </div>
