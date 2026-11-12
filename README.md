@@ -87,6 +87,7 @@ npm run preview
 | `1`–`4`, `Q`–`R`, `A`–`F`, `Z`–`V` | Trigger MPC Beat Machine Pads 1–16 |
 | `Ctrl + Mouse Wheel` | Smooth Timeline Zoom In / Out |
 
+© to OutLawzz
 ---
 
 ## 📜 License
